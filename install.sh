@@ -3385,7 +3385,14 @@ addSingBoxRouteRule() {
     local domainList=$2
     # 路由文件名称
     local routingName=$3
-
+    # 读取上次安装内容
+    if [[ -f "${singBoxConfigPath}${routingName}.json" ]]; then
+        read -r -p "读取到上次的配置，是否保留 ？[y/n]:" historyRouteStatus
+        if [[ "${historyRouteStatus}" == "y" ]]; then
+            domainList="${domainList},$(jq -rc .route.rules[0].rule_set[] "${singBoxConfigPath}${routingName}.json" | awk -F "[_]" '{print $1}' | paste -sd ',')"
+            domainList="${domainList},$(jq -rc .route.rules[0].domain_regex[] "${singBoxConfigPath}${routingName}.json" | awk -F "[*]" '{print $2}' | paste -sd ',' | sed 's/\\//g')"
+        fi
+    fi
     local rules=
     rules=$(initSingBoxRules "${domainList}" "${routingName}")
     # domain精确匹配规则
@@ -7158,7 +7165,7 @@ initSingBoxRules() {
         else
             domainRules=$(echo "${domainRules}" | jq -r ". += [\"^([a-zA-Z0-9_-]+\\\.)*${line//./\\\\.}\"]")
         fi
-    done < <(echo "$1" | tr ',' '\n')
+    done < <(echo "$1" | tr ',' '\n' | grep -v '^$' | sort -n | uniq | paste -sd ',' | tr ',' '\n')
     echo "{ \"domainRules\":${domainRules},\"ruleSet\":${ruleSet}}"
 }
 
@@ -9205,7 +9212,7 @@ menu() {
     cd "$HOME" || exit
     echoContent red "\n=============================================================="
     echoContent green "作者：mack-a"
-    echoContent green "当前版本：v3.3.3"
+    echoContent green "当前版本：v3.3.4"
     echoContent green "Github：https://github.com/mack-a/v2ray-agent"
     echoContent green "描述：八合一共存脚本\c"
     showInstallStatus
